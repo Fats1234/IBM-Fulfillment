@@ -59,7 +59,7 @@
       if(!empty($data)){
          $data=preg_replace("/\r/","\n",$data);
          $records=explode("\n",$data);
-         $logfile=fopen("/var/www/html/ibm/logs/log.txt","w") or die("Unable to write to log file!");
+         $logfile=fopen("/var/www/html/ibm/logs/log.txt","a") or die("Unable to write to log file!");
          fwrite($logfile,"DATA: ".$data."\n");
          foreach($records as $record){            
             if(!empty($record)){
