@@ -29,7 +29,7 @@
    }
    
    $timestamp=date("Y-m-d-His");      
-   if(importFileToDatabase($ibmDatabase,"ftp://production03/share001/IBM-FULFILLMENT/serial.txt")){
+   if(importFileToDatabase($ibmDatabase,"http://production03/ibm/serial.txt")){
       archiveFile("production03","/share001/IBM-FULFILLMENT/serial.txt","/share001/IBM-FULFILLMENT/archive/serial-$timestamp.txt");
    }
       
