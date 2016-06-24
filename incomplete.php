@@ -117,8 +117,12 @@
    }
    
    //temporary table creation... modify later for more general variable macaddress handling
-   function genRecordsTable($database,$setNumber=0){
-      $query="SELECT ibm_record_id, ibm_serial_number FROM ibm_records_batch WHERE ibm_record_deleted=0 AND ibm_set_number=$setNumber";
+   function genRecordsTable($database,$setNumber=0,$systemType=1){
+      $query="SELECT ibm_record_id, ibm_serial_number 
+               FROM ibm_records_batch 
+               WHERE ibm_record_deleted=0 
+               AND ibm_set_number=$setNumber 
+               AND ibm_system_type_id=$systemType";
       //echo $query;
       $records=$database->query($query);
       
@@ -126,12 +130,13 @@
       $recordsTable = new HTML_TABLE($attrs);
       $recordsTable->setHeaderContents(0,0,"Rec. No.");
       $recordsTable->setHeaderContents(0,1,"Serial Number");
-      $recordsTable->setHeaderContents(0,2,"MAC Address (eth0)");
-      $recordsTable->setHeaderContents(0,3,"MAC Address (eth1)");
-      $recordsTable->setHeaderContents(0,4,"MAC Address (eth2)");
+      //$recordsTable->setHeaderContents(0,2,"MAC Address (eth0)");
+      //$recordsTable->setHeaderContents(0,3,"MAC Address (eth1)");
+      //$recordsTable->setHeaderContents(0,4,"MAC Address (eth2)");
       
       $row=1;
       $recordIDs="";
+      $maxMAC=0;
       
       while($record=$records->fetch_assoc()){
          $serial=$record['ibm_serial_number'];
@@ -147,10 +152,15 @@
          while($results=$macaddresses->fetch_assoc()){
             $macaddress[]=$results['ibm_macaddress'];
          }
+         //we want to find the biggest amount of mac addresses in order to set the header columns
+         $maxMAC=max($maxMAC,count($macaddress));
          
-         $recordsTable->setCellContents($row,2,$macaddress[0]);
-         $recordsTable->setCellContents($row,3,$macaddress[1]);
-         $recordsTable->setCellContents($row,4,$macaddress[2]);
+         for($i=0;$i<count($macaddress);$i++){
+            $recordsTable->setCellContents($row,$i+2,$macaddress[$i]);
+         }
+         //$recordsTable->setCellContents($row,2,$macaddress[0]);
+         //$recordsTable->setCellContents($row,3,$macaddress[1]);
+         //$recordsTable->setCellContents($row,4,$macaddress[2]);
          
          $row++;
          
@@ -168,6 +178,10 @@
                         " In Set Number <font color='red'>".$duplicate['ibm_set_number']."</font></font><br>";
             }
          }
+      }
+     
+      for($i=0;$i<$maxMAC;$i++){
+         $recordsTable->setHeaderContents(0,$i+2,"MAC Address (eth$i)");
       }
      
       $altAttrs=array('class' => 'alt');
