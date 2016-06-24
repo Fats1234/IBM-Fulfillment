@@ -42,13 +42,7 @@
       echo "<font size=\"5\"><a href=\"set.php\">Click Here For The Most Recent Completed Set</a></font><br>";
    }else{
       echo "<font size=\"5\">The Following </font><font size=\"5\" color=\"red\"><b><u>Incomplete</u></b></font><font size=\"5\"> Records Were Found:</font><br><br>";
-      echo startForm("incomplete.php","POST");
-      if(checkSerialDuplicates($ibmDatabase)){         
-         echo genButton("complete","complete","Complete Current Set");
-      }
-      echo "<br>";
       echo genRecordsTable($ibmDatabase);
-      echo endForm();
    }
    
    function importFileToDatabase($database,$file){
@@ -130,9 +124,6 @@
       $recordsTable = new HTML_TABLE($attrs);
       $recordsTable->setHeaderContents(0,0,"Rec. No.");
       $recordsTable->setHeaderContents(0,1,"Serial Number");
-      //$recordsTable->setHeaderContents(0,2,"MAC Address (eth0)");
-      //$recordsTable->setHeaderContents(0,3,"MAC Address (eth1)");
-      //$recordsTable->setHeaderContents(0,4,"MAC Address (eth2)");
       
       $row=1;
       $recordIDs="";
@@ -158,9 +149,6 @@
          for($i=0;$i<count($macaddress);$i++){
             $recordsTable->setCellContents($row,$i+2,$macaddress[$i]);
          }
-         //$recordsTable->setCellContents($row,2,$macaddress[0]);
-         //$recordsTable->setCellContents($row,3,$macaddress[1]);
-         //$recordsTable->setCellContents($row,4,$macaddress[2]);
          
          $row++;
          
@@ -179,16 +167,22 @@
             }
          }
       }
-     
+      
+      //set MAC Address Header column
       for($i=0;$i<$maxMAC;$i++){
          $recordsTable->setHeaderContents(0,$i+2,"MAC Address (eth$i)");
       }
      
       $altAttrs=array('class' => 'alt');
       $recordsTable->altRowAttributes(0,null,$altAttrs);
-      
-      $returnStr = genHidden("recordIDs",$recordIDs);
-      $returnStr .= "<br>\n<font size=\"5\"> Total Records: $records->num_rows</font><br>\n";
+            
+      $returnStr = "<br>\n<font size=\"5\"> Total Records: $records->num_rows</font><br>\n";
+      $returnStr .= startForm("incomplete.php","POST");
+      $returnStr .= genHidden("recordIDs",$recordIDs);
+      if(checkSerialDuplicates($database)){         
+         $returnStr .= genButton("complete","complete","Complete Current Set");
+      }
+      $returnStr .= endForm();
       $returnStr .= $recordsTable->toHTML();
       return $returnStr;
       
