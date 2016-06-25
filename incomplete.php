@@ -28,9 +28,19 @@
       header("Location: set.php");
    }
    
-   $timestamp=date("Y-m-d-His");      
-   if(importFileToDatabase($ibmDatabase,"http://production03/ibm/serial.txt")){
-      archiveFile("production03","/share001/IBM-FULFILLMENT/serial.txt","/share001/IBM-FULFILLMENT/archive/serial-$timestamp.txt");
+   //get a list of all system types and import records to database
+   $query="SELECT ibm_system_type_id, ibm_system_import_link
+            FROM ibm_system_type";
+   $results=$ibmDatabase->query($query);
+   
+   while($type=$results->fetch_assoc()){
+      $timestamp=date("Y-m-d-His");
+      if(!empty($type['ibm_system_import_link']){
+         if(importFileToDatabase($ibmDatabase,$type['ibm_system_import_link'],$type['ibm_system_type_id'])){
+            archiveFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_archive_dest_dir']."serial-$timestamp.txt");
+            //archiveFile("production03","/share001/IBM-FULFILLMENT/serial.txt","/share001/IBM-FULFILLMENT/archive/serial-$timestamp.txt");
+         }
+      }
    }
       
    //check if there are records if not do not display table
@@ -45,7 +55,7 @@
       echo genRecordsTable($ibmDatabase);
    }
    
-   function importFileToDatabase($database,$file){
+   function importFileToDatabase($database,$file,$systemType){
 
       $data=file_get_contents($file);
       //echo $data;
@@ -69,7 +79,7 @@
                }
                
                //insert serial number record
-               $query="INSERT INTO ibm_records_batch SET ibm_serial_number='$serial',ibm_fulfill_date='$timestamp'";
+               $query="INSERT INTO ibm_records_batch SET ibm_serial_number='$serial',ibm_fulfill_date='$timestamp',ibm_system_type_id=$systemType";
                //echo $query;
                fwrite($logfile,"QUERY: ".$query."\n");
                if($database->query($query)){
@@ -110,7 +120,7 @@
 
    }
    
-   //temporary table creation... modify later for more general variable macaddress handling
+   //function to generate records table for a system type
    function genRecordsTable($database,$setNumber=0,$systemType=1){
       $query="SELECT ibm_record_id, ibm_serial_number 
                FROM ibm_records_batch 
@@ -179,7 +189,8 @@
       $returnStr = "<br>\n<font size=\"5\"> Total Records: $records->num_rows</font><br>\n";
       $returnStr .= startForm("incomplete.php","POST");
       $returnStr .= genHidden("recordIDs",$recordIDs);
-      if(checkSerialDuplicates($database)){         
+      $returnStr .= genHidden("systemType",$systemType);
+      if(checkSerialDuplicates($database,$setNumber,$systemType)){         
          $returnStr .= genButton("complete","complete","Complete Current Set");
       }
       $returnStr .= endForm();
@@ -189,11 +200,12 @@
    }
    
    //find duplicated serial within a set
-   function checkSerialDuplicates($database,$set=0){
+   function checkSerialDuplicates($database,$set=0,$systemType=1){
       $query="SELECT ibm_serial_number, COUNT(*) duplicate_count 
                   FROM ibm_records_batch
                   WHERE ibm_set_number=$set
                   AND ibm_record_deleted=0
+                  AND ibm_system_type_id=$systemType
                   GROUP BY ibm_serial_number 
                   HAVING duplicate_count > 1";
       
