@@ -35,7 +35,7 @@
    
    while($type=$results->fetch_assoc()){
       $timestamp=date("Y-m-d-His");
-      if(!empty($type['ibm_system_import_link']){
+      if(!empty($type['ibm_system_import_link'])){
          if(importFileToDatabase($ibmDatabase,$type['ibm_system_import_link'],$type['ibm_system_type_id'])){
             archiveFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_archive_dest_dir']."serial-$timestamp.txt");
             //archiveFile("production03","/share001/IBM-FULFILLMENT/serial.txt","/share001/IBM-FULFILLMENT/archive/serial-$timestamp.txt");
