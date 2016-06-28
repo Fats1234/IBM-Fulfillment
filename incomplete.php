@@ -201,6 +201,7 @@
       $altAttrs=array('class' => 'alt');
       $recordsTable->altRowAttributes(0,null,$altAttrs);
       
+      $returnStr = "<br>\n<font size=\"5\"><u>$systemName</u> <br> Total Records: $records->num_rows</font><br>\n";
       $returnStr .= startForm("incomplete.php","POST");
       $returnStr .= genHidden("recordIDs",$recordIDs);
       $returnStr .= genHidden("systemType",$systemType);
