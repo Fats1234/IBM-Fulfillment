@@ -39,6 +39,9 @@
    while($type=$results->fetch_assoc()){
       $timestamp=date("Y-m-d-His");
       if(!empty($type['ibm_system_import_link'])){
+         if(!getRecordFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_import_link'])){
+            exit("ERROR getting ftp file: ".$type['ibm_system_archive_file']." from ftp server: ".$type['ibm_system_archive_server'];
+         }
          if(importFileToDatabase($ibmDatabase,$type['ibm_system_import_link'],$type['ibm_system_type_id'])){
             archiveFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_archive_dest_dir']."serial-$timestamp.txt");
             //archiveFile("production03","/share001/IBM-FULFILLMENT/serial.txt","/share001/IBM-FULFILLMENT/archive/serial-$timestamp.txt");
@@ -120,6 +123,19 @@
       }
    }
    
+   function getRecordFile($ftpServer,$remoteFile,$localFile){
+      //open connection to ftp
+      $success=FALSE;
+      $conn_id = ftp_connect($ftpServer) or die("Couldn't connect to ftp server: $ftpServer");
+      ftp_login($conn_id,'archive','polywell');
+      if(ftp_get($conn_id,$localFile,$remoteFile)){
+         $success=TRUE;
+      }
+      ftp_close($conn_id);
+      
+      return $success;
+   }
+   
    function archiveFile($ftpServer,$file,$archiveFile){
       //open connection to ftp
       $conn_id = ftp_connect($ftpServer);
@@ -136,7 +152,8 @@
                FROM ibm_records_batch 
                WHERE ibm_record_deleted=0 
                AND ibm_set_number=$setNumber 
-               AND ibm_system_type_id=$systemType";
+               AND ibm_system_type_id=$systemType
+               ORDER BY ibm_record_id";
       //echo $query;
       $records=$database->query($query);
       
