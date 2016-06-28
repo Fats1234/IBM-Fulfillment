@@ -40,7 +40,7 @@
       $timestamp=date("Y-m-d-His");
       if(!empty($type['ibm_system_import_link'])){
          if(!getRecordFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_import_link'])){
-            exit("ERROR getting ftp file: ".$type['ibm_system_archive_file']." from ftp server: ".$type['ibm_system_archive_server'];
+            exit("File was not downloaded correctly.  Please try refreshing page to try again!");
          }
          if(importFileToDatabase($ibmDatabase,$type['ibm_system_import_link'],$type['ibm_system_type_id'])){
             archiveFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_archive_dest_dir']."serial-$timestamp.txt");
@@ -128,8 +128,12 @@
       $success=FALSE;
       $conn_id = ftp_connect($ftpServer) or die("Couldn't connect to ftp server: $ftpServer");
       ftp_login($conn_id,'archive','polywell');
-      if(ftp_get($conn_id,$localFile,$remoteFile)){
+      if(ftp_size($conn_id,$remoteFile)==-1){
          $success=TRUE;
+      }else{
+         if(ftp_get($conn_id,$localFile,$remoteFile,FTP_ASCII)){
+            $success=TRUE;
+         }
       }
       ftp_close($conn_id);
       
