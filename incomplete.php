@@ -28,8 +28,11 @@
       header("Location: set.php");
    }
    
+   //flag to inform there are no incomplete records
+   $incompleteRecordsExist=false;
+   
    //get a list of all system types and import records to database
-   $query="SELECT ibm_system_type_id, ibm_system_import_link
+   $query="SELECT ibm_system_type_id, ibm_system_import_link, ibm_system_archive_server, ibm_system_archive_file, ibm_system_archive_dest_dir
             FROM ibm_system_type";
    $results=$ibmDatabase->query($query);
    
@@ -41,18 +44,25 @@
             //archiveFile("production03","/share001/IBM-FULFILLMENT/serial.txt","/share001/IBM-FULFILLMENT/archive/serial-$timestamp.txt");
          }
       }
-   }
       
-   //check if there are records if not do not display table
-   $query = "SELECT ibm_record_id FROM ibm_records_batch WHERE ibm_set_number=0 AND ibm_record_deleted=0 LIMIT 1";
-   $records = $ibmDatabase->query($query);
+      //check if there are records if not do not display table
+      $query = "SELECT ibm_record_id 
+                  FROM ibm_records_batch 
+                  WHERE ibm_set_number=0
+                  AND ibm_system_type_id=".$type['ibm_system_type_id']."
+                  AND ibm_record_deleted=0 LIMIT 1";
+      $records = $ibmDatabase->query($query);
    
-   if(!$records->num_rows){
+      if($records->num_rows){
+         echo "<font size=\"5\">The Following </font><font size=\"5\" color=\"red\"><b><u>Incomplete</u></b></font><font size=\"5\"> Records Were Found:</font><br><br>";
+         echo genRecordsTable($ibmDatabase);
+         $incompleteRecordsExist=true;
+      }
+   }
+   
+   if(!$incompleteRecordsExist){
       echo "<font size=\"5\">No Incomplete Records Found</font><br>\n";
       echo "<font size=\"5\"><a href=\"set.php\">Click Here For The Most Recent Completed Set</a></font><br>";
-   }else{
-      echo "<font size=\"5\">The Following </font><font size=\"5\" color=\"red\"><b><u>Incomplete</u></b></font><font size=\"5\"> Records Were Found:</font><br><br>";
-      echo genRecordsTable($ibmDatabase);
    }
    
    function importFileToDatabase($database,$file,$systemType){
@@ -183,10 +193,14 @@
          $recordsTable->setHeaderContents(0,$i+2,"MAC Address (eth$i)");
       }
      
+      //get system type name
+      $query="SELECT ibm_system_type_name FROM ibm_system_type WHERE ibm_system_type_id=$systemType";
+      $result=$database->query($query);
+      list($systemName)=$result->fetch_row();
+     
       $altAttrs=array('class' => 'alt');
       $recordsTable->altRowAttributes(0,null,$altAttrs);
-            
-      $returnStr = "<br>\n<font size=\"5\"> Total Records: $records->num_rows</font><br>\n";
+      
       $returnStr .= startForm("incomplete.php","POST");
       $returnStr .= genHidden("recordIDs",$recordIDs);
       $returnStr .= genHidden("systemType",$systemType);
@@ -195,6 +209,7 @@
       }
       $returnStr .= endForm();
       $returnStr .= $recordsTable->toHTML();
+      $returnStr .= "<br>\n";
       return $returnStr;
       
    }
