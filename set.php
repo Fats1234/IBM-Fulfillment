@@ -40,20 +40,31 @@
       }
    }
    
-   function genLabelPrintTable($setNumber){
+   function genLabelPrintTable($setNumber,$database,$systemType=1){
       $attrs=array('border' => '1');
       $labelPrintTable = new HTML_TABLE($attrs);
       
-      $buttonIBMSystem = genButton("print","IBMSystem","Print IBMSystem Label");
-      $buttonIBMserialonly = genButton("print","IBMserialonly","Print IBMserialonly Label");
-      $buttonIBMmacadd = genButton("print","IBM-macaddress","Print IBM-macaddress Label");
+      //get all possible labels for system type
+      $query="SELECT ibm_label_name, ibm_label_image FROM ibm_fulfillment_labels WHERE ibm_system_type_id=$systemType";
+      $result=$database->query($query);
       
-      $labelPrintTable->setCellContents(0,0,"<img src=images/IBMsystem.png>");
-      $labelPrintTable->setCellContents(0,1,"<img src=images/IBMserial-only.png>");
-      $labelPrintTable->setCellContents(0,2,"<img src=images/IBM-mac.png>");
-      $labelPrintTable->setCellContents(1,0,$buttonIBMSystem);
-      $labelPrintTable->setCellContents(1,1,$buttonIBMserialonly);
-      $labelPrintTable->setCellContents(1,2,$buttonIBMmacadd);
+      $column=0;
+      while($fulfillLabel=$result->fetch_assoc()){
+         $labelPrintTable->setCellContents(0,$column,"<img src=images".$fulfillLabel['ibm_label_image'].">");
+         $labelPrintTable->setCellContents(1,$column,genButton("print",$fulfillLabel['ibm_label_name'],"Print ".$fulfillLabel['ibm_label_name']." Label"));
+         $column++;
+      }
+      
+      //$buttonIBMSystem = genButton("print","IBMSystem","Print IBMSystem Label");
+      //$buttonIBMserialonly = genButton("print","IBMserialonly","Print IBMserialonly Label");
+      //$buttonIBMmacadd = genButton("print","IBM-macaddress","Print IBM-macaddress Label");
+      
+      //$labelPrintTable->setCellContents(0,0,"<img src=images/IBMsystem.png>");
+      //$labelPrintTable->setCellContents(0,1,"<img src=images/IBMserial-only.png>");
+      //$labelPrintTable->setCellContents(0,2,"<img src=images/IBM-mac.png>");
+      //$labelPrintTable->setCellContents(1,0,$buttonIBMSystem);
+      //$labelPrintTable->setCellContents(1,1,$buttonIBMserialonly);
+      //$labelPrintTable->setCellContents(1,2,$buttonIBMmacadd);
       
       $labelPrintTable->setAllAttributes("align=\"center\"");
       
@@ -63,7 +74,7 @@
    
    function genSetTable($database,$setNumber,$searchStr=""){
       if(empty($searchStr)){
-         $query="SELECT ibm_record_id, ibm_serial_number, ibm_fulfill_date 
+         $query="SELECT ibm_record_id, ibm_serial_number, ibm_fulfill_date, ibm_system_type_id 
                      FROM ibm_records_batch 
                      WHERE ibm_record_deleted=0 
                      AND ibm_set_number=$setNumber 
@@ -78,12 +89,12 @@
             }
          }
          $serialStr=implode(',',$serialArray);
-         $query="SELECT ibm_record_id, ibm_serial_number, ibm_fulfill_date
+         $query="SELECT ibm_record_id, ibm_serial_number, ibm_fulfill_date, ibm_system_type_id
                      FROM ibm_records_batch
                      WHERE ibm_serial_number
                      IN ($serialStr)
                      AND ibm_record_deleted=0
-                     ORDER BY FIELD(ibm_serial_number, $serialStr)";
+                     ORDER BY ibm_system_type_id, FIELD(ibm_serial_number, $serialStr)";
                      
          //echo $query;
       }
@@ -93,18 +104,19 @@
       if(!$records->num_rows) return FALSE;
       
       $attrs=array('border' => '1');
-      $setTable = new HTML_TABLE($attrs);      
-      $setTable->setHeaderContents(0,2,"Serial Number");
-      $setTable->setHeaderContents(0,3,"MAC Address (eth0)");
-      $setTable->setHeaderContents(0,4,"MAC Address (eth1)");
-      $setTable->setHeaderContents(0,5,"MAC Address (eth2)");
-      $setTable->setHeaderContents(0,6,"Date Fulfillment Completed");
+      $setTable = new HTML_TABLE($attrs);
       $setTable->setHeaderContents(0,0,"Print Record");
       $setTable->setHeaderContents(0,1,"<input type=\"checkbox\" onclick=\"checkAll(this)\" checked>");
+      $setTable->setHeaderContents(0,2,"Serial Number");
+      //$setTable->setHeaderContents(0,3,"MAC Address (eth0)");
+      //$setTable->setHeaderContents(0,4,"MAC Address (eth1)");
+      //$setTable->setHeaderContents(0,5,"MAC Address (eth2)");
+      //$setTable->setHeaderContents(0,6,"Date Fulfillment Completed");
       
       $row=1;
       $macaddresses="";
       
+      //we have the records now we need split the records somehow into multiple tables by system type
       while($record=$records->fetch_assoc()){
          $setTable->setCellContents($row,2,$record['ibm_serial_number']);
          $setTable->setCellContents($row,6,$record['ibm_fulfill_date']);
@@ -150,7 +162,7 @@
       if(empty($searchStr)) $returnStr.="<font size=\"5\">Date of Last Fulfilled System In This Set: <font color=\"$dateColor\">$lastSystemDate($todayStr)</font></font><br>";
       if(empty($searchStr)) $returnStr.="<font size=\"4\">Completed Set ID: $setNumber</font><br>";
       $returnStr.= "<br>";
-      $returnStr.=genLabelPrintTable($setNumber);
+      $returnStr.=genLabelPrintTable($setNumber,$database);
       $returnStr.="<br>";
       $returnStr.=$setTable->toHTML();
       $returnStr.=endForm();
