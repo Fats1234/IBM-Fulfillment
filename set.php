@@ -57,7 +57,7 @@
       
       $labelPrintTable->setAllAttributes("align=\"center\"");
       
-      return $labelPrintTable->toHTML()."<br>";
+      return $labelPrintTable->toHTML()."<br>\n".genHidden("systemTypeID",$systemType)."\n";
       
    }
    
