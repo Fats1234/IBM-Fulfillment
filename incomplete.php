@@ -58,7 +58,7 @@
    
       if($records->num_rows){
          echo "<font size=\"5\">The Following </font><font size=\"5\" color=\"red\"><b><u>Incomplete</u></b></font><font size=\"5\"> Records Were Found:</font><br><br>";
-         echo genRecordsTable($ibmDatabase);
+         echo genRecordsTable($ibmDatabase,$type['ibm_system_type_id']);
          $incompleteRecordsExist=true;
       }
    }
@@ -71,6 +71,7 @@
    function importFileToDatabase($database,$file,$systemType){
 
       $data=file_get_contents($file);
+      unlink($file);
       //echo $data;
    
       if(!empty($data)){
@@ -152,7 +153,7 @@
    }
    
    //function to generate records table for a system type
-   function genRecordsTable($database,$setNumber=0,$systemType=1){
+   function genRecordsTable($database,$systemType=1,$setNumber=0){
       $query="SELECT ibm_record_id, ibm_serial_number 
                FROM ibm_records_batch 
                WHERE ibm_record_deleted=0 

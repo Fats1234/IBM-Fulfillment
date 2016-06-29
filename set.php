@@ -57,7 +57,12 @@
       
       $labelPrintTable->setAllAttributes("align=\"center\"");
       
-      return $labelPrintTable->toHTML()."<br>\n".genHidden("systemTypeID",$systemType)."\n";
+      //get system type name
+      $query="SELECT ibm_system_type_name FROM ibm_system_type WHERE ibm_system_type_id=$systemType";
+      $result=$database->query($query);
+      list($systemTypeName)=$result->fetch_row();
+      
+      return "<br><font size=4><b>$systemTypeName</b></font><br>\n".$labelPrintTable->toHTML()."<br>\n".genHidden("systemTypeID",$systemType)."\n";
       
    }
    
@@ -107,8 +112,9 @@
                $altAttrs=array('class' => 'alt');
                $setTable->setColAttributes(0,array('align'=>'center'));
                $setTable->altRowAttributes(0,null,$altAttrs);
-               $returnStr .= $setTable->toHTML();
+               $returnStr .= $setTable->toHTML()."\n<br>\n";
                $returnStr .= endForm();
+               $maxMAC=0;
                $row=1;
             }
             $returnStr .= startForm("print.php","POST","printLabel",TRUE);            
