@@ -50,25 +50,14 @@
       
       $column=0;
       while($fulfillLabel=$result->fetch_assoc()){
-         $labelPrintTable->setCellContents(0,$column,"<img src=images".$fulfillLabel['ibm_label_image'].">");
+         $labelPrintTable->setCellContents(0,$column,"<img src=images/".$fulfillLabel['ibm_label_image'].">");
          $labelPrintTable->setCellContents(1,$column,genButton("print",$fulfillLabel['ibm_label_name'],"Print ".$fulfillLabel['ibm_label_name']." Label"));
          $column++;
       }
       
-      //$buttonIBMSystem = genButton("print","IBMSystem","Print IBMSystem Label");
-      //$buttonIBMserialonly = genButton("print","IBMserialonly","Print IBMserialonly Label");
-      //$buttonIBMmacadd = genButton("print","IBM-macaddress","Print IBM-macaddress Label");
-      
-      //$labelPrintTable->setCellContents(0,0,"<img src=images/IBMsystem.png>");
-      //$labelPrintTable->setCellContents(0,1,"<img src=images/IBMserial-only.png>");
-      //$labelPrintTable->setCellContents(0,2,"<img src=images/IBM-mac.png>");
-      //$labelPrintTable->setCellContents(1,0,$buttonIBMSystem);
-      //$labelPrintTable->setCellContents(1,1,$buttonIBMserialonly);
-      //$labelPrintTable->setCellContents(1,2,$buttonIBMmacadd);
-      
       $labelPrintTable->setAllAttributes("align=\"center\"");
       
-      return $labelPrintTable->toHTML();
+      return $labelPrintTable->toHTML()."<br>";
       
    }
    
@@ -113,13 +102,13 @@
             if($prevSysTypeID != 0){
                //set MAC Address Header column
                for($i=0;$i<$maxMAC;$i++){
-                  $recordsTable->setHeaderContents(0,$i+4,"MAC Address (eth$i)");
+                  $setTable->setHeaderContents(0,$i+4,"MAC Address (eth$i)");
                }
                $altAttrs=array('class' => 'alt');
                $setTable->setColAttributes(0,array('align'=>'center'));
                $setTable->altRowAttributes(0,null,$altAttrs);
-               returnStr .= $setTable->toHTML();
-               returnStr .= endForm();
+               $returnStr .= $setTable->toHTML();
+               $returnStr .= endForm();
                $row=1;
             }
             $returnStr .= startForm("print.php","POST","printLabel",TRUE);            
@@ -129,7 +118,7 @@
             $setTable->setHeaderContents(0,0,"Print Record");
             $setTable->setHeaderContents(0,1,"<input type=\"checkbox\" onclick=\"checkAll(this)\" checked>");
             $setTable->setHeaderContents(0,2,"Serial Number");
-            $setTable->setHeaderContents(0,3,"Date Fulfillment Completed")
+            $setTable->setHeaderContents(0,3,"Date Fulfillment Completed");
          } 
          $setTable->setCellContents($row,0,"$row");
          $setTable->setCellContents($row,1,genCheckBox("recordID",$record['ibm_record_id']));
@@ -157,9 +146,14 @@
          $prevSysTypeID=$record['ibm_system_type_id'];
       }      
       
+      for($i=0;$i<$maxMAC;$i++){
+         $setTable->setHeaderContents(0,$i+4,"MAC Address (eth$i)");
+      }
       $altAttrs=array('class' => 'alt');
       $setTable->setColAttributes(0,array('align'=>'center'));
       $setTable->altRowAttributes(0,null,$altAttrs);
+      $returnStr .= $setTable->toHTML();
+      $returnStr .= endForm();
             
       $currentDate=date("Y-m-d");
       $lastSystemDate=substr($lastSystemDate,0,10);
