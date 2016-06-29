@@ -103,8 +103,9 @@
                }
                //insert mac address records
                foreach($macaddresses as $interface => $macaddress){
+                  $interfaceID=$interface+1;
                   if(!empty($macaddress)){
-                     $query="INSERT INTO ibm_batch_macaddress SET ibm_record_id=$recordID,ibm_serial_number='$serial',ibm_interface_number=$interface,ibm_macaddress='$macaddress'";
+                     $query="INSERT INTO ibm_batch_macaddress SET ibm_record_id=$recordID,ibm_serial_number='$serial',ibm_interface_number=$interfaceID,ibm_macaddress='$macaddress'";
                      //echo $query;
                      fwrite($logfile,"QUERY: ".$query."\n");
                      if($database->query($query)){                        

@@ -23,17 +23,17 @@
          $serialNumbers .= $record['ibm_serial_number']."\n";
          
          //get first macaddress of record
-         $query = "SELECT ibm_macaddress FROM ibm_batch_macaddress WHERE ibm_interface_number=0 AND ibm_record_id=".$record['ibm_record_id'];
+         $query = "SELECT ibm_macaddress FROM ibm_batch_macaddress WHERE ibm_interface_number=1 AND ibm_record_id=".$record['ibm_record_id'];
          $results = $ibmDatabase->query($query);
          $result = $results->fetch_assoc();
          $macadds1 .= $result['ibm_macaddress']."\n";
          
-         $query = "SELECT ibm_macaddress FROM ibm_batch_macaddress WHERE ibm_interface_number=1 AND ibm_record_id=".$record['ibm_record_id'];
+         $query = "SELECT ibm_macaddress FROM ibm_batch_macaddress WHERE ibm_interface_number=2 AND ibm_record_id=".$record['ibm_record_id'];
          $results = $ibmDatabase->query($query);
          $result = $results->fetch_assoc();
          $macadds2 .= $result['ibm_macaddress']."\n";
          
-         $query = "SELECT ibm_macaddress FROM ibm_batch_macaddress WHERE ibm_interface_number=2 AND ibm_record_id=".$record['ibm_record_id'];
+         $query = "SELECT ibm_macaddress FROM ibm_batch_macaddress WHERE ibm_interface_number=3 AND ibm_record_id=".$record['ibm_record_id'];
          $results = $ibmDatabase->query($query);
          $result = $results->fetch_assoc();
          $macadds3 .= $result['ibm_macaddress']."\n";
