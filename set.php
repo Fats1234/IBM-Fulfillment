@@ -103,25 +103,39 @@
       
       if(!$records->num_rows) return FALSE;
       
-      $attrs=array('border' => '1');
-      $setTable = new HTML_TABLE($attrs);
-      $setTable->setHeaderContents(0,0,"Print Record");
-      $setTable->setHeaderContents(0,1,"<input type=\"checkbox\" onclick=\"checkAll(this)\" checked>");
-      $setTable->setHeaderContents(0,2,"Serial Number");
-      //$setTable->setHeaderContents(0,3,"MAC Address (eth0)");
-      //$setTable->setHeaderContents(0,4,"MAC Address (eth1)");
-      //$setTable->setHeaderContents(0,5,"MAC Address (eth2)");
-      //$setTable->setHeaderContents(0,6,"Date Fulfillment Completed");
-      
       $row=1;
-      $macaddresses="";
+      $macaddresses="";      
+      $prevSysTypeID=0;
+      $returnStr="";
       
-      //we have the records now we need split the records somehow into multiple tables by system type
       while($record=$records->fetch_assoc()){
-         $setTable->setCellContents($row,2,$record['ibm_serial_number']);
-         $setTable->setCellContents($row,6,$record['ibm_fulfill_date']);
+         if($record['ibm_system_type_id'] != $prevSysTypeID){
+            if($prevSysTypeID != 0){
+               //set MAC Address Header column
+               for($i=0;$i<$maxMAC;$i++){
+                  $recordsTable->setHeaderContents(0,$i+4,"MAC Address (eth$i)");
+               }
+               $altAttrs=array('class' => 'alt');
+               $setTable->setColAttributes(0,array('align'=>'center'));
+               $setTable->altRowAttributes(0,null,$altAttrs);
+               returnStr .= $setTable->toHTML();
+               returnStr .= endForm();
+               $row=1;
+            }
+            $returnStr .= startForm("print.php","POST","printLabel",TRUE);            
+            $returnStr .= genLabelPrintTable($setNumber,$database,$record['ibm_system_type_id']);
+            $attrs=array('border' => '1');
+            $setTable = new HTML_TABLE($attrs);
+            $setTable->setHeaderContents(0,0,"Print Record");
+            $setTable->setHeaderContents(0,1,"<input type=\"checkbox\" onclick=\"checkAll(this)\" checked>");
+            $setTable->setHeaderContents(0,2,"Serial Number");
+            $setTable->setHeaderContents(0,3,"Date Fulfillment Completed")
+         } 
          $setTable->setCellContents($row,0,"$row");
          $setTable->setCellContents($row,1,genCheckBox("recordID",$record['ibm_record_id']));
+         $setTable->setCellContents($row,2,$record['ibm_serial_number']);
+         $setTable->setCellContents($row,3,$record['ibm_fulfill_date']);
+         
          //grab mac addresses from database
          $query="SELECT ibm_macaddress FROM ibm_batch_macaddress WHERE ibm_record_id=".$record['ibm_record_id']." ORDER BY ibm_interface_number";
          //echo $query;
@@ -131,13 +145,16 @@
          while($results=$macaddresses->fetch_assoc()){
             $macaddress[]=$results['ibm_macaddress'];
          }
+         //we want to find the biggest amount of mac addresses in order to set the header columns
+         $maxMAC=max($maxMAC,count($macaddress));
          
-         $setTable->setCellContents($row,3,$macaddress[0]);
-         $setTable->setCellContents($row,4,$macaddress[1]);
-         $setTable->setCellContents($row,5,$macaddress[2]);
+         for($i=0;$i<count($macaddress);$i++){
+            $setTable->setCellContents($row,$i+4,$macaddress[$i]);
+         }
          
          $lastSystemDate=$record['ibm_fulfill_date'];
          $row++;
+         $prevSysTypeID=$record['ibm_system_type_id'];
       }      
       
       $altAttrs=array('class' => 'alt');
@@ -156,18 +173,18 @@
          $todayStr="Not Today!";
       }
       
-      $returnStr=startForm("print.php","POST","printLabel",TRUE);
-      $returnStr.=genHidden("set",$setNumber);
-      $returnStr.="<font size=\"5\">Number of Records: <font color=\"green\">$records->num_rows</font></font><br>";
-      if(empty($searchStr)) $returnStr.="<font size=\"5\">Date of Last Fulfilled System In This Set: <font color=\"$dateColor\">$lastSystemDate($todayStr)</font></font><br>";
-      if(empty($searchStr)) $returnStr.="<font size=\"4\">Completed Set ID: $setNumber</font><br>";
-      $returnStr.= "<br>";
-      $returnStr.=genLabelPrintTable($setNumber,$database);
-      $returnStr.="<br>";
-      $returnStr.=$setTable->toHTML();
-      $returnStr.=endForm();
+      //$returnStr=startForm("print.php","POST","printLabel",TRUE);
+      //$returnStr.=genHidden("set",$setNumber);
+      $headerStr="<font size=\"5\">Number of Records: <font color=\"green\">$records->num_rows</font></font><br>";
+      if(empty($searchStr)) $headerStr.="<font size=\"5\">Date of Last Fulfilled System In This Set: <font color=\"$dateColor\">$lastSystemDate($todayStr)</font></font><br>";
+      if(empty($searchStr)) $headerStr.="<font size=\"4\">Completed Set ID: $setNumber</font><br>";
+      $headerStr.= "<br>";
+      //$returnStr.=genLabelPrintTable($setNumber,$database);
+      //$returnStr.="<br>";
+      //$returnStr.=$setTable->toHTML();
+      //$returnStr.=endForm();
       
-      return $returnStr;
+      return $headerStr.$returnStr;
    }
    
    include "footer.php";
