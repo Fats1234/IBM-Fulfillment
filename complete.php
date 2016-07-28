@@ -67,15 +67,26 @@
       
    }
    
+   echo "<font size=\"4\"><b>Limit the amount of records shown:</b></font><br>\n";
+   echo startForm("complete.php","GET")."\n";
+   echo genTextBox("limit")."\n";
+   echo genButton();
+   echo endForm();
+   echo "<br><br>\n";
+   
    //Create a table for each system type
    $query="SElECT ibm_system_type_id FROM ibm_system_type ORDER BY ibm_system_type_id";
    $results=$ibmDatabase->query($query);
-   while(list($sysTypeID)=$results->fetch_row()){    
-      echo genCompletionTable($ibmDatabase,$sysTypeID);
+   while(list($sysTypeID)=$results->fetch_row()){
+      $limit=$_GET['limit'];
+      if(!preg_match("/^[0-9]+$/",$limit)){
+         $limit=FALSE;
+      }
+      echo genCompletionTable($ibmDatabase,$sysTypeID,$limit);
       echo "<br><br>\n";
    }
    
-   function genCompletionTable($database,$sysTypeID){   
+   function genCompletionTable($database,$sysTypeID,$limit=0){   
       $query="SELECT ibm_record_id,ibm_serial_number,ibm_fulfill_date 
                   FROM ibm_records_batch 
                   WHERE ibm_batch_id=0 
@@ -83,7 +94,11 @@
                   AND ibm_record_deleted=0
                   AND ibm_set_number!=0
                   ORDER BY ibm_record_id";
-                  
+      
+      if($limit){
+         $query .= " LIMIT $limit";
+      }
+      
       $recordResults=$database->query($query);
       if(empty($recordResults->num_rows)){
          return;
