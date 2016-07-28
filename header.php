@@ -28,8 +28,8 @@
    $attrs = array('width' => '100%','border' => '1');
    $taskTable=new HTML_Table($attrs);
    
-   $taskTable->setHeaderContents(0,0,"<a href=\"index.php\">Reserved</a>");
-   $taskTable->setHeaderContents(0,1,"<a href=\"index.php\">Reserved</a>");
+   $taskTable->setHeaderContents(0,0,"<a href=\"batch.php\">Batch History</a>");
+   $taskTable->setHeaderContents(0,1,"<a href=\"complete.php\">Batch Completion</a>");
    $taskTable->setHeaderContents(0,2,"<a href=\"edit.php\">Edit Records</a>");      
    $taskTable->setHeaderContents(0,3,"<a href=\"set.php\">Set History/Print</a>");
    $taskTable->setHeaderContents(0,4,"<a href=\"incomplete.php\">Incomplete Set</a>");

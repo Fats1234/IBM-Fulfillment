@@ -70,15 +70,20 @@
    
    function importFileToDatabase($database,$file,$systemType){
 
-      $data=file_get_contents($file);
+      //$data=file_get_contents($file);
+      $fh = fopen($file, "r");
+      $data = fread($fh, filesize($file));
+      fclose($fh);
+      copy($file,"$file.old");
       unlink($file);
+      //rename($file,"/var/www/html/ibm/tmp/old-$file");
       //echo $data;
    
       if(!empty($data)){
-         $data=preg_replace("/\r/","\n",$data);
-         $records=explode("\n",$data);
          $logfile=fopen("/var/www/html/ibm/logs/log.txt","a") or die("Unable to write to log file!");
-         fwrite($logfile,"DATA: ".$data."\n");
+         fwrite($logfile,"RAWDATA: \n".$data."\n");
+         //$data=preg_replace("/\r/","\n",$data);
+         $records=explode("\n",$data);
          foreach($records as $record){            
             if(!empty($record)){
                fwrite($logfile,"RECORD: ".$record."\n");
