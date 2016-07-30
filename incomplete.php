@@ -39,13 +39,15 @@
    while($type=$results->fetch_assoc()){
       $timestamp=date("Y-m-d-His");
       if(!empty($type['ibm_system_import_link'])){
-         if(!getRecordFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_import_link'])){
-            exit("File was not downloaded correctly.  Please try refreshing page to try again!");
+         //if(!getRecordFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_import_link'])){
+            //exit("File was not downloaded correctly.  Please try refreshing page to try again!");
+         //}
+         if($data=archiveFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_archive_dest_dir']."serial-$timestamp.txt")){
          }
-         if(importFileToDatabase($ibmDatabase,$type['ibm_system_import_link'],$type['ibm_system_type_id'])){
-            archiveFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_archive_dest_dir']."serial-$timestamp.txt");
+         //if(importFileToDatabase($ibmDatabase,$type['ibm_system_import_link'],$type['ibm_system_type_id'])){
+         //   archiveFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_archive_dest_dir']."serial-$timestamp.txt");
             //archiveFile("production03","/share001/IBM-FULFILLMENT/serial.txt","/share001/IBM-FULFILLMENT/archive/serial-$timestamp.txt");
-         }
+         //}
       }
       
       //check if there are records if not do not display table
@@ -68,14 +70,15 @@
       echo "<font size=\"5\"><a href=\"set.php\">Click Here For The Most Recent Completed Set</a></font><br>";
    }
    
-   function importFileToDatabase($database,$file,$systemType){
-
+   //function importFileToDatabase($database,$file,$systemType){
+   function importFileToDatabase($database,$data,$systemType){
+   
       //$data=file_get_contents($file);
-      $fh = fopen($file, "r");
-      $data = fread($fh, filesize($file));
-      fclose($fh);
-      copy($file,"$file.old");
-      unlink($file);
+      //$fh = fopen($file, "r");
+      //$data = fread($fh, filesize($file));
+      //fclose($fh);
+      //copy($file,"$file.old");
+      //unlink($file);
       //rename($file,"/var/www/html/ibm/tmp/old-$file");
       //echo $data;
    
@@ -150,11 +153,18 @@
    function archiveFile($ftpServer,$file,$archiveFile){
       //open connection to ftp
       $conn_id = ftp_connect($ftpServer);
-      
       ftp_login($conn_id,'archive','polywell');
-      ftp_rename($conn_id,$file,$archiveFile);
+      
+      if(ftp_size($conn_id,$file)==-1){
+         //file doesn't exist
+         return false;
+      }else{
+         ftp_rename($conn_id,$file,$archiveFile);
+         $filecontent=file_get_contents("ftp://".$ftpServer."/".$archiveFile);
+      }
       ftp_close($conn_id);
-
+      
+      return $filecontent;
    }
    
    //function to generate records table for a system type
