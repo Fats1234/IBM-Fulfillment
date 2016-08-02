@@ -43,6 +43,7 @@
             //exit("File was not downloaded correctly.  Please try refreshing page to try again!");
          //}
          if($data=archiveFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_archive_dest_dir']."serial-$timestamp.txt")){
+            importFileToDatabase($ibmDatabase,$data,$type['ibm_system_type_id']);
          }
          //if(importFileToDatabase($ibmDatabase,$type['ibm_system_import_link'],$type['ibm_system_type_id'])){
          //   archiveFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_archive_dest_dir']."serial-$timestamp.txt");
@@ -152,6 +153,8 @@
    
    function archiveFile($ftpServer,$file,$archiveFile){
       //open connection to ftp
+      $timestamp=date("Y-m-d-His");
+      $localFile="/var/www/html/ibm/tmp/fulfill-records-$timestamp.txt";
       $conn_id = ftp_connect($ftpServer);
       ftp_login($conn_id,'archive','polywell');
       
@@ -159,8 +162,12 @@
          //file doesn't exist
          return false;
       }else{
-         ftp_rename($conn_id,$file,$archiveFile);
-         $filecontent=file_get_contents("ftp://".$ftpServer."/".$archiveFile);
+         ftp_rename($conn_id,$file,$archiveFile);         
+         while(filesize($localFile) != ftp_size($conn_id,$archiveFile)){
+            ftp_get($conn_id,$localFile,$archiveFile,FTP_ASCII);
+         }
+         
+         $filecontent=file_get_contents($localFile);
       }
       ftp_close($conn_id);
       
