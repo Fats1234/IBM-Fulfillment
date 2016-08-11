@@ -164,7 +164,7 @@
       }else{
          ftp_rename($conn_id,$file,$archiveFile);         
          while(filesize($localFile) != ftp_size($conn_id,$archiveFile)){
-            ftp_get($conn_id,$localFile,$archiveFile,FTP_ASCII);
+            ftp_get($conn_id,$localFile,$archiveFile,FTP_BINARY);
          }
          
          $filecontent=file_get_contents($localFile);

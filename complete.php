@@ -8,82 +8,155 @@
    
    $ibmDatabase = new mysqli($dbhost,$dbuser,$dbpass,$database);
    
-   if(isset($_POST['complete'])){
-      $batchRecords=implode(",",$_POST['recordID']);
-      $numRecords=count($_POST['recordID']);
-      $reference=$_POST['reference'];
-      $sysTypeID=$_POST['sysTypeID'];
+   //check to see if there are any open batches
+   $query="SElECT ibm_batch_id,ibm_number_of_records,ibm_system_type_id
+                     FROM ibm_batch_history
+                     WHERE batch_open=1
+                     AND batch_locked=0
+                     LIMIT 1";
+   $result=$ibmDatabase->query($query);
+   list($batchID,$numRecords,$sysTypeID)=$result->fetch_row();
+   
+   //if there is an open batch
+   if($result->num_rows){
+      //display the current batch's information
+      echo genCurrentBatchInfo($ibmDatabase,$batchID);
       
-      if(empty($batchRecords)){
-         echo "<font size=\"5\" color=\"red\"><b>ERROR! Cannot complete batch without any records selected!</b></font><br><br>\n";
-      }elseif(empty($reference)){
-         echo "<font size=\"5\" color=\"red\"><b>ERROR! Reference field cannot be empty!</b></font><br><br>\n";
-      }else{
-         $query="SELECT ibm_fulfill_date 
-                     FROM ibm_records_batch 
-                     WHERE ibm_record_id IN ($batchRecords) 
-                     ORDER BY ibm_fulfill_date LIMIT 1";
-         $result=$ibmDatabase->query($query);
-         list($startDate)=$result->fetch_row();
-         
-         $query="SELECT ibm_fulfill_date 
-                     FROM ibm_records_batch 
-                     WHERE ibm_record_id IN ($batchRecords) 
-                     ORDER BY ibm_fulfill_date DESC LIMIT 1";
-         $result=$ibmDatabase->query($query);
-         list($endDate)=$result->fetch_row();
-         
-         $completeDate=date("Y-m-d-His");
-         $batchFilename=preg_replace("/\s/","",$reference);
-         $batchFilename=preg_replace("/[^0-9a-zA-Z_.]/","-",$batchFilename)."-batch-$completeDate.csv";
-         $query="INSERT INTO ibm_batch_history SET ibm_start_date='$startDate',
-                                 ibm_end_date='$endDate',ibm_batch_complete_date='$completeDate',
-                                 ibm_reference='$reference',ibm_download_link='$batchFilename',
-                                 ibm_number_of_records=$numRecords,ibm_system_type_id=$sysTypeID";
-         $ibmDatabase->query($query);
-         $batchID=$ibmDatabase->insert_id;
-         
-         $query="UPDATE ibm_records_batch SET ibm_batch_id=$batchID WHERE ibm_record_id IN ($batchRecords)";
-         $ibmDatabase->query($query);
-         
-         $query="SELECT ibm_record_id,ibm_serial_number FROM ibm_records_batch WHERE ibm_record_id IN ($batchRecords) ORDER BY ibm_record_id";
-         $results = $ibmDatabase->query($query);
-         
-         $fh=fopen("batch/$batchFilename","wt");
-         while(list($recordID,$serialNo) = $results->fetch_row()){
-            $query="SELECT ibm_macaddress FROM ibm_batch_macaddress WHERE ibm_record_id=$recordID ORDER BY ibm_interface_number";
-            $macaddresses=$ibmDatabase->query($query);
-            $macaddress=array();
-            while($record=$macaddresses->fetch_assoc()){
-               $macaddress[]=$record['ibm_macaddress'];
-            }
-            $recStr=$serialNo.",".implode(",",$macaddress)."\n";
-            fwrite($fh,$recStr);            
-         }
-         fclose($fh);
-         
-         echo "<font size=\"5\" color=\"green\"><b>Batch Completed Successfully!</b></font><br><br>\n";
+      //allow user to limit the amount of records shown per system type
+      echo "<font size=\"4\"><b>Limit the amount of records shown:</b></font><br>\n";
+      echo startForm("complete.php","GET")."\n";
+      echo genTextBox("limit")."\n";
+      echo genButton();
+      echo endForm();
+      echo "<br><br>\n";
+      
+      $limit=$_GET['limit'];
+         if(!preg_match("/^[0-9]+$/",$limit)){
+         $limit=FALSE;
       }
+      if($numRecords){
+         echo genCompletionTable($ibmDatabase,$sysTypeID);
+      }else{
+         //Create a table for each system type
+         $query="SElECT ibm_system_type_id FROM ibm_system_type ORDER BY ibm_system_type_id";
+         $results=$ibmDatabase->query($query);
+         while(list($sysTypeID)=$results->fetch_row()){
+            echo genCompletionTable($ibmDatabase,$sysTypeID,$limit);
+            echo "<br><br>\n";
+         }
+      }
+   }else{
+      //There is no open batch so we list all closed batches as option
+      $query="SELECT ibm_number_of_records FROM ibm_batch_history WHERE ibm_number_of_records=0 AND batch_locked=0";
+      $result=$ibmDatabase->query($query);
+      if(!$result->num_rows){
+         //If no batch with 0 records exist then we allow user to create a new batch
+         echo genCreateNewBatch();
+         echo "<br>\n";
+      }
+      echo genBatchTable($ibmDatabase);
+   }
+   
+   function genCurrentBatchInfo($database,$batchID){
+      $query="SELECT ibm_start_date,ibm_end_date,ibm_batch_complete_date,
+                           ibm_reference,ibm_number_of_records,ibm_system_type_id
+                           FROM ibm_batch_history
+                           WHERE ibm_batch_id=$batchID";
+                           
+      $result=$database->query($query);
+      list($startDate,$endDate,$createDate,$reference,$numRecords,$sysTypeID)=$result->fetch_row();
+      
+      $query="SELECT ibm_system_type_name FROM ibm_system_type WHERE ibm_system_type_id=$sysTypeID";
+      $result = $database->query($query);
+      list($sysType) = $result->fetch_row();
+      
+      $batchInfoTable = new HTML_TABLE();
+      
+      $row=0;
+      $batchInfoTable->setCellContents($row,0,"<b>Batch ID:</b>");
+      $batchInfoTable->setCellContents($row++,1,$batchID);
+      $batchInfoTable->setCellContents($row,0,"<b>Batch Reference:</b>");
+      $batchInfoTable->setCellContents($row,1,$reference);
+      $batchInfoTable->setCellContents($row++,2,startForm("modify_batch.php","POST").genHidden("batchID",$batchID).genTextBox("reference").
+                                          genButton("modref","modref","Modify Reference").endForm());
+      if($numRecords){
+         $batchInfoTable->setCellContents($row,0,"<b>Batch System Type:</b>");
+         $batchInfoTable->setCellContents($row++,1,$sysType);
+      }
+      $batchInfoTable->setCellContents($row,0,"<b>Batch Creation Date:<b>");
+      $batchInfoTable->setCellContents($row++,1,$createDate);
+      $batchInfoTable->setCellContents($row,0,"<b>Number of Records:</b>");
+      $batchInfoTable->setCellContents($row,1,$numRecords);
+      if($numRecords){
+         $batchInfoTable->setCellContents($row++,2,"<a href='editbatch.php?batchid=$batchID'>View Records</a>");
+         $batchInfoTable->setCellContents($row,0,"<b>Fulfillment Date Start:</b>");
+         $batchInfoTable->setCellContents($row++,1,$startDate);
+         $batchInfoTable->setCellContents($row,0,"<b>Fulfillment Date End:</b>");
+         $batchInfoTable->setCellContents($row++,1,$endDate);
+      }else{
+         $row++;
+      }
+      $batchInfoTable->setCellContents($row++,0,startForm("modify_batch.php","POST").genHidden("batchID",$batchID).
+                                          genButton("closebatch","closebatch","Close Current Batch").endForm());
+      
+      $firstColAtt=array('width'=>'30%');
+      $batchInfoTable->updateColAttributes(0,$firstColAtt);
+      $batchInfoTable->updateColAttributes(1,$firstColAtt);
+      
+      $returnStr = "<font size='4'><b><u>Current Batch Information</u></b></font><br>\n";
+      $returnStr .= $batchInfoTable->toHTML();
+      $returnStr .= "<br><br>\n";
+      
+      return $returnStr;
       
    }
    
-   echo "<font size=\"4\"><b>Limit the amount of records shown:</b></font><br>\n";
-   echo startForm("complete.php","GET")."\n";
-   echo genTextBox("limit")."\n";
-   echo genButton();
-   echo endForm();
-   echo "<br><br>\n";
+   function genCreateNewBatch(){
+      $returnStr = "<font size='4'><b>Open a New Batch:</b></font><br>\n";
+      $returnStr .= "Enter a Reference for New Batch:";
+      $returnStr .= startForm("modify_batch.php","POST");
+      $returnStr .= genTextBox("reference");
+      $returnStr .= genButton("createbatch","createbatch","Open New Batch");
+      $returnStr .= endForm();
+      $returnStr .= "<br>\n";
+      
+      return $returnStr;
+   }
    
-   //Create a table for each system type
-   $query="SElECT ibm_system_type_id FROM ibm_system_type ORDER BY ibm_system_type_id";
-   $results=$ibmDatabase->query($query);
-   while(list($sysTypeID)=$results->fetch_row()){
-      $limit=$_GET['limit'];
-      if(!preg_match("/^[0-9]+$/",$limit)){
-         $limit=FALSE;
+   function genBatchTable($database){
+      $attrs=array('border' => '1');
+      $batchTable = new HTML_TABLE($attrs);
+      
+      $query="SELECT ibm_batch_id,ibm_reference,ibm_number_of_records,ibm_system_type_id,batch_open
+                  FROM ibm_batch_history WHERE batch_locked=0 ORDER BY ibm_batch_id DESC";
+      $results=$database->query($query);
+      
+      $batchTable->setHeaderContents(0,0,"System Type");
+      $batchTable->setHeaderContents(0,1,"Number of Records");
+      $batchTable->setHeaderContents(0,2,"Batch Reference");
+      $batchTable->setHeaderContents(0,3,"Re-Open Batch");
+      
+      $row=1;
+      while($batchRecord = $results->fetch_assoc()){
+         //get system type name
+         $query="SELECT ibm_system_type_name FROM ibm_system_type WHERE ibm_system_type_id=".$batchRecord['ibm_system_type_id'];
+         $result=$database->query($query);
+         list($systemTypeName)=$result->fetch_row();
+         
+         $batchTable->setCellContents($row,0,$systemTypeName);
+         $batchTable->setCellContents($row,1,$batchRecord['ibm_number_of_records']);
+         $batchTable->setCellContents($row,2,$batchRecord['ibm_reference']);
+         $batchTable->setCellContents($row,3,startForm("modify_batch.php","POST").
+                                                genHidden("batchID",$batchRecord['ibm_batch_id']).
+                                                genButton("openbatch","openbatch","Open Batch").endForm());
+         $row++;
       }
-      echo genCompletionTable($ibmDatabase,$sysTypeID,$limit);
-      echo "<br><br>\n";
+      
+      $returnStr = "<font size='4'><b>Reopen a Closed Batch</b></font><br>\n";
+      $returnStr .= $batchTable->toHTML();
+      $returnStr .= "<br>\n";
+      
+      return $returnStr;
    }
    
    function genCompletionTable($database,$sysTypeID,$limit=0){   
@@ -143,12 +216,10 @@
       $batchTable->setColAttributes(0,array('align'=>'center'));
       $batchTable->altRowAttributes(0,null,$altAttrs);
       
-      $returnStr = startForm("complete.php","POST");
+      $returnStr = startForm("modify_batch.php","POST");
       $returnStr .= genHidden("sysTypeID",$sysTypeID);
-      $returnStr .= "\n<font size=\"5\"><b>$sysTypeName:</b></font><br><br>\n";
-      $returnStr .= "Enter a reference number for this batch:<br>\n";
-      $returnStr .= genTextBox("reference");
-      $returnStr .= genButton("complete","complete","Complete Batch");
+      $returnStr .= "\n<font size=\"5\"><b>$sysTypeName:</b></font><br>\n";
+      $returnStr .= genButton("addrecords","addrecords","Add Selected Systems to Current Open Batch");
       $returnStr .= "<br><br>";
       $returnStr .= $batchTable->toHTML();
       $returnStr .= endForm();
