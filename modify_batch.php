@@ -155,4 +155,14 @@
          header("Location:".$_SERVER['HTTP_REFERER']);
       }
    }
+   
+   if(isset($_POST['remRecord'])){
+      $recordID=$_POST['recordID'];
+      $query="UPDATE ibm_records_batch SET ibm_batch_id=0 WHERE ibm_record_id=$recordID";
+      //echo $query;
+         
+      if($result=$ibmDatabase->query($query)){         
+         header("Location:".$_SERVER['HTTP_REFERER']);
+      }
+   }
 ?>

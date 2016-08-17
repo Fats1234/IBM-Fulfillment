@@ -23,7 +23,7 @@
       
       $query="SELECT ibm_batch_id,ibm_start_date,ibm_end_date,ibm_batch_complete_date,
                         ibm_reference,ibm_download_link,ibm_number_of_records,
-                        ibm_system_type_id FROM ibm_batch_history ORDER BY ibm_batch_id DESC";
+                        ibm_system_type_id FROM ibm_batch_history WHERE batch_open=0 ORDER BY ibm_batch_id DESC";
       $batchResults=$database->query($query);                  
       
       $row=1;
@@ -31,9 +31,10 @@
          //get system type name
          $query="SELECT ibm_system_type_name FROM ibm_system_type WHERE ibm_system_type_id=".$batch['ibm_system_type_id'];
          $result=$database->query($query);
+         $batchID=$batch['ibm_batch_id'];
          list($sysType)=$result->fetch_row();
          $batchTable->setCellContents($row,0,$sysType);
-         $batchTable->setCellContents($row,1,$batch['ibm_number_of_records']);
+         $batchTable->setCellContents($row,1,"<a href='viewbatch.php?batchID=$batchID'>".$batch['ibm_number_of_records']."</a>");
          $batchTable->setCellContents($row,2,substr($batch['ibm_start_date'],0,10));
          $batchTable->setCellContents($row,3,substr($batch['ibm_end_date'],0,10));
          $batchTable->setCellContents($row,4,"<a href=\"batch/".$batch['ibm_download_link']."\">Batch CSV</a>");

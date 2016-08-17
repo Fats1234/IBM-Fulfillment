@@ -8,6 +8,10 @@
    
    $ibmDatabase = new mysqli($dbhost,$dbuser,$dbpass,$database);
    
+   if(isset($_GET['success'])){
+      //echo $_SERVER['HTTP_REFERER'];
+   }
+   
    //check to see if there are any open batches
    $query="SElECT ibm_batch_id,ibm_number_of_records,ibm_system_type_id
                      FROM ibm_batch_history
@@ -88,7 +92,7 @@
       $batchInfoTable->setCellContents($row,0,"<b>Number of Records:</b>");
       $batchInfoTable->setCellContents($row,1,$numRecords);
       if($numRecords){
-         $batchInfoTable->setCellContents($row++,2,"<a href='editbatch.php?batchid=$batchID'>View Records</a>");
+         $batchInfoTable->setCellContents($row++,2,"<a href='viewbatch.php?batchID=$batchID'>View Records</a>");
          $batchInfoTable->setCellContents($row,0,"<b>Fulfillment Date Start:</b>");
          $batchInfoTable->setCellContents($row++,1,$startDate);
          $batchInfoTable->setCellContents($row,0,"<b>Fulfillment Date End:</b>");
@@ -143,14 +147,21 @@
          $result=$database->query($query);
          list($systemTypeName)=$result->fetch_row();
          
+         $batchID=$batchRecord['ibm_batch_id'];
+         
          $batchTable->setCellContents($row,0,$systemTypeName);
-         $batchTable->setCellContents($row,1,$batchRecord['ibm_number_of_records']);
+         $batchTable->setCellContents($row,1,"<a href='viewbatch.php?batchID=$batchID'>".$batchRecord['ibm_number_of_records']."</a>");
          $batchTable->setCellContents($row,2,$batchRecord['ibm_reference']);
          $batchTable->setCellContents($row,3,startForm("modify_batch.php","POST").
                                                 genHidden("batchID",$batchRecord['ibm_batch_id']).
                                                 genButton("openbatch","openbatch","Open Batch").endForm());
          $row++;
       }
+      
+      $altAttrs=array('class' => 'alt');
+      $batchTable->altRowAttributes(1,null,$altAttrs);
+      $attrs = array('align' => 'center');
+      $batchTable->updateColAttributes(1,$attrs);
       
       $returnStr = "<font size='4'><b>Reopen a Closed Batch</b></font><br>\n";
       $returnStr .= $batchTable->toHTML();
