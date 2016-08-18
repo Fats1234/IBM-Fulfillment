@@ -8,7 +8,8 @@
    $ibmDatabase = new mysqli($dbhost,$dbuser,$dbpass,$database);
    
    if(isset($_POST['complete'])){
-      $recordIDs=explode(",",$_POST['recordIDs']);
+      //$recordIDs=explode(",",$_POST['recordIDs']);
+      $recordIDs=$_POST['recordID'];
       
       //Get the current set number
       $query="SELECT ibm_set_number FROM ibm_records_batch WHERE ibm_record_deleted=0 ORDER BY ibm_set_number DESC LIMIT 1";
@@ -194,7 +195,8 @@
       $attrs=array('border' => '1');
       $recordsTable = new HTML_TABLE($attrs);
       $recordsTable->setHeaderContents(0,0,"Rec. No.");
-      $recordsTable->setHeaderContents(0,1,"Serial Number");
+      $recordsTable->setHeaderContents(0,1,"<input type=\"checkbox\" onclick=\"checkAll(this)\" checked>");
+      $recordsTable->setHeaderContents(0,2,"Serial Number");
       
       $row=1;
       $recordIDs="";
@@ -203,8 +205,9 @@
       while($record=$records->fetch_assoc()){
          $serial=$record['ibm_serial_number'];
          $recordsTable->setCellContents($row,0,$row);
-         $recordsTable->setCellContents($row,1,$record['ibm_serial_number']);
-         $recordIDs.=$record['ibm_record_id'].",";
+         $recordsTable->setCellContents($row,1,genCheckBox("recordID",$record['ibm_record_id']));
+         $recordsTable->setCellContents($row,2,$record['ibm_serial_number']);
+         //$recordIDs.=$record['ibm_record_id'].",";
          //grab mac addresses from database
          $query="SELECT ibm_macaddress FROM ibm_batch_macaddress WHERE ibm_record_id=".$record['ibm_record_id']." ORDER BY ibm_interface_number";
          //echo $query;
@@ -218,7 +221,7 @@
          $maxMAC=max($maxMAC,count($macaddress));
          
          for($i=0;$i<count($macaddress);$i++){
-            $recordsTable->setCellContents($row,$i+2,$macaddress[$i]);
+            $recordsTable->setCellContents($row,$i+3,$macaddress[$i]);
          }
          
          $row++;
@@ -241,7 +244,7 @@
       
       //set MAC Address Header column
       for($i=0;$i<$maxMAC;$i++){
-         $recordsTable->setHeaderContents(0,$i+2,"MAC Address (eth$i)");
+         $recordsTable->setHeaderContents(0,$i+3,"MAC Address (eth$i)");
       }
      
       //get system type name
@@ -272,13 +275,13 @@
          $returnStr .= genButton("reimportLastFile","reimportLastFile","Re-Import Records From This File");
       }
       $returnStr .= "<br>Total Records: $records->num_rows</font><br>\n";
-      $returnStr .= genHidden("recordIDs",$recordIDs);
+      //$returnStr .= genHidden("recordIDs",$recordIDs);
       $returnStr .= genHidden("systemType",$systemType);
       if(checkSerialDuplicates($database,$setNumber,$systemType)){         
          $returnStr .= genButton("complete","complete","Complete Current Set");
       }
-      $returnStr .= endForm();
       $returnStr .= $recordsTable->toHTML();
+      $returnStr .= endForm();
       $returnStr .= "<br>\n";
       return $returnStr;
       
@@ -309,7 +312,7 @@
    }
    
    function checkRecordDuplicate($database,$serialNo,$macaddresses){      
-      $query="SELECT ibm_record_id FROM ibm_records_batch WHERE ibm_serial_number='$serialNo' AND ibm_set_number=0 AND ibm_record_deleted=0";
+      $query="SELECT ibm_record_id FROM ibm_records_batch WHERE ibm_serial_number='$serialNo' AND ibm_record_deleted=0";
       $result=$database->query($query);
       if($result->num_rows){
          //serial number is found, now check if all the MAC addresses are the same in the same order
