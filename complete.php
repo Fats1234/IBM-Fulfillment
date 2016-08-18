@@ -116,7 +116,7 @@
    }
    
    function genCreateNewBatch(){
-      $returnStr = "<font size='4'><b>Open a New Batch:</b></font><br>\n";
+      $returnStr = "<font size='4'><b>Create a New Batch:</b></font><br>\n";
       $returnStr .= "Enter a Reference for New Batch:";
       $returnStr .= startForm("modify_batch.php","POST");
       $returnStr .= genTextBox("reference");

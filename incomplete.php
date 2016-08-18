@@ -28,6 +28,19 @@
       header("Location: set.php");
    }
    
+   if(isset($_POST['reimportLastFile'])){
+      //get the full path o the last file
+      $systemTypeID=$_POST['systemType'];
+      $lastFilename=$_POST['archiveFilename'];
+      $query="SELECT ibm_system_archive_server,ibm_system_archive_dest_dir FROM ibm_system_type WHERE ibm_system_type_id=$systemTypeID";
+      $result=$ibmDatabase->query($query);
+      list($server,$archiveDir)=$result->fetch_row();
+      
+      $data=file_get_contents("ftp://$server$archiveDir$lastFilename");
+      //echo $data;
+      importFileToDatabase($ibmDatabase,$data,$systemTypeID);
+   }
+   
    //flag to inform there are no incomplete records
    $incompleteRecordsExist=false;
    
@@ -39,16 +52,14 @@
    while($type=$results->fetch_assoc()){
       $timestamp=date("Y-m-d-His");
       if(!empty($type['ibm_system_import_link'])){
-         //if(!getRecordFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_import_link'])){
-            //exit("File was not downloaded correctly.  Please try refreshing page to try again!");
-         //}
          if($data=archiveFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_archive_dest_dir']."serial-$timestamp.txt")){
+            $query="INSERT INTO ibm_archive_file_history 
+                        SET ibm_archive_file_name='serial-$timestamp.txt',
+                        ibm_system_type_id=".$type['ibm_system_type_id'].",".
+                        "ibm_archive_date='$timestamp'";
+            $ibmDatabase->query($query);
             importFileToDatabase($ibmDatabase,$data,$type['ibm_system_type_id']);
          }
-         //if(importFileToDatabase($ibmDatabase,$type['ibm_system_import_link'],$type['ibm_system_type_id'])){
-         //   archiveFile($type['ibm_system_archive_server'],$type['ibm_system_archive_file'],$type['ibm_system_archive_dest_dir']."serial-$timestamp.txt");
-            //archiveFile("production03","/share001/IBM-FULFILLMENT/serial.txt","/share001/IBM-FULFILLMENT/archive/serial-$timestamp.txt");
-         //}
       }
       
       //check if there are records if not do not display table
@@ -71,22 +82,11 @@
       echo "<font size=\"5\"><a href=\"set.php\">Click Here For The Most Recent Completed Set</a></font><br>";
    }
    
-   //function importFileToDatabase($database,$file,$systemType){
    function importFileToDatabase($database,$data,$systemType){
-   
-      //$data=file_get_contents($file);
-      //$fh = fopen($file, "r");
-      //$data = fread($fh, filesize($file));
-      //fclose($fh);
-      //copy($file,"$file.old");
-      //unlink($file);
-      //rename($file,"/var/www/html/ibm/tmp/old-$file");
-      //echo $data;
    
       if(!empty($data)){
          $logfile=fopen("/var/www/html/ibm/logs/log.txt","a") or die("Unable to write to log file!");
          fwrite($logfile,"RAWDATA: \n".$data."\n");
-         //$data=preg_replace("/\r/","\n",$data);
          $records=explode("\n",$data);
          foreach($records as $record){            
             if(!empty($record)){
@@ -99,6 +99,12 @@
                $serial=$values[0];
                for($i=1;$i<count($values);$i++){
                   $macaddresses[]=$values[$i];
+               }
+               
+               //don't bother importing record if serial number and all macaddresses are the same (and in the same order)
+               if(checkRecordDuplicate($database,$serial,$macaddresses)){
+                  fwrite($logfile,"EXACT DUPLICATE Record with serial number $serial found. Skip importing this record!\n");
+                  continue;
                }
                
                //insert serial number record
@@ -242,12 +248,30 @@
       $query="SELECT ibm_system_type_name FROM ibm_system_type WHERE ibm_system_type_id=$systemType";
       $result=$database->query($query);
       list($systemName)=$result->fetch_row();
+      
+      //get last archive file name
+      $query="SELECT ibm_archive_file_id,ibm_archive_file_name 
+                  FROM ibm_archive_file_history 
+                  WHERE ibm_system_type_id=$systemType 
+                  ORDER BY ibm_archive_date
+                  DESC LIMIT 1";
+      //echo $query;
+      $result=$database->query($query);
+      if($result->num_rows){
+         list($archiveFileID,$archiveFilename)=$result->fetch_row();
+      }
      
       $altAttrs=array('class' => 'alt');
       $recordsTable->altRowAttributes(0,null,$altAttrs);
       
-      $returnStr = "<br>\n<font size=\"5\"><u>$systemName</u> <br> Total Records: $records->num_rows</font><br>\n";
+      $returnStr = "<br>\n<font size=\"5\"><u>$systemName</u><br>";
       $returnStr .= startForm("incomplete.php","POST");
+      $returnStr .= "Last Import Filename: $archiveFilename";
+      $returnStr .= genHidden("archiveFilename",$archiveFilename);
+      if(!empty($archiveFilename)){
+         $returnStr .= genButton("reimportLastFile","reimportLastFile","Re-Import Records From This File");
+      }
+      $returnStr .= "<br>Total Records: $records->num_rows</font><br>\n";
       $returnStr .= genHidden("recordIDs",$recordIDs);
       $returnStr .= genHidden("systemType",$systemType);
       if(checkSerialDuplicates($database,$setNumber,$systemType)){         
@@ -282,6 +306,30 @@
       }else{
          return TRUE;
       }
+   }
+   
+   function checkRecordDuplicate($database,$serialNo,$macaddresses){      
+      $query="SELECT ibm_record_id FROM ibm_records_batch WHERE ibm_serial_number='$serialNo' AND ibm_set_number=0 AND ibm_record_deleted=0";
+      $result=$database->query($query);
+      if($result->num_rows){
+         //serial number is found, now check if all the MAC addresses are the same in the same order
+         list($recordID)=$result->fetch_row();
+         $query="SELECT ibm_macaddress FROM ibm_batch_macaddress WHERE ibm_record_id=$recordID ORDER BY ibm_interface_number";
+         $result=$database->query($query);
+         foreach($macaddresses as $macaddress){
+            list($dbMac) = $result->fetch_row();
+            if(strcmp($macaddress,$dbMac) != 0){
+               //macaddress did not match, no need to compare any further
+               return FALSE;
+            }
+         }
+      }else{
+         //serial number is not found, which means there is no duplicate record
+         return FALSE;
+      }
+
+      //serial number matches and all macaddresses matches so we return true
+      return TRUE;
    }
    
    include "footer.php";
