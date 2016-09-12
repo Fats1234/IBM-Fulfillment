@@ -131,8 +131,8 @@
       $attrs=array('border' => '1');
       $batchTable = new HTML_TABLE($attrs);
       
-      $query="SELECT ibm_batch_id,ibm_reference,ibm_number_of_records,ibm_system_type_id,batch_open
-                  FROM ibm_batch_history WHERE batch_locked=0 ORDER BY ibm_batch_id DESC";
+      $query="SELECT ibm_batch_id,ibm_reference,ibm_number_of_records,ibm_system_type_id,batch_open,batch_locked
+                  FROM ibm_batch_history ORDER BY ibm_batch_id DESC";
       $results=$database->query($query);
       
       $batchTable->setHeaderContents(0,0,"System Type");
@@ -152,9 +152,13 @@
          $batchTable->setCellContents($row,0,$systemTypeName);
          $batchTable->setCellContents($row,1,"<a href='viewbatch.php?batchID=$batchID'>".$batchRecord['ibm_number_of_records']."</a>");
          $batchTable->setCellContents($row,2,$batchRecord['ibm_reference']);
-         $batchTable->setCellContents($row,3,startForm("modify_batch.php","POST").
+         if($batchRecord['batch_locked']){
+            $batchTable->setCellContents($row,3,"<b>Locked</b>");
+         }else{
+            $batchTable->setCellContents($row,3,startForm("modify_batch.php","POST").
                                                 genHidden("batchID",$batchRecord['ibm_batch_id']).
                                                 genButton("openbatch","openbatch","Open Batch").endForm());
+         }
          $row++;
       }
       
@@ -162,6 +166,7 @@
       $batchTable->altRowAttributes(1,null,$altAttrs);
       $attrs = array('align' => 'center');
       $batchTable->updateColAttributes(1,$attrs);
+      $batchTable->updateColAttributes(3,$attrs);
       
       $returnStr = "<font size='4'><b>Reopen a Closed Batch</b></font><br>\n";
       $returnStr .= $batchTable->toHTML();
