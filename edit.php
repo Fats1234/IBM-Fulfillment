@@ -95,9 +95,9 @@
          $recordTable->setCellContents($row,3,$macaddresses[2]);
          $recordTable->setCellContents($row,4,$recordValuesByID['ibm_fulfill_date']);
          if($record['ibm_record_deleted']){
-            $recordTable->setCellContents($row,5,genHidden("recordID",$recordID).genButton("undelete","undelete","Un-Delete"));
+            $recordTable->setCellContents($row,5,startForm("edit.php","POST").genHidden("recordID",$recordID).genButton("undelete","undelete","Un-Delete").endForm());
          }else{
-            $recordTable->setCellContents($row,5,genHidden("recordID",$recordID).genButton("delete","delete","Delete"));
+            $recordTable->setCellContents($row,5,startForm("edit.php","POST").genHidden("recordID",$recordID).genButton("delete","delete","Delete").endForm());
          }
          
          $row++;
